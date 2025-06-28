@@ -1,0 +1,133 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NLD Document Schema",
+  "description": "JSON Schema for NLD documents - version 1",
+  "type": "object",
+  "required": ["metadata", "content"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["version", "type", "created", "title"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Document schema version",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "type": {
+          "type": "string",
+          "description": "Document type",
+          "enum": ["contract", "receipt", "agreement"]
+        },
+        "created": {
+          "type": "string",
+          "description": "Document creation date",
+          "format": "date-time"
+        },
+        "title": {
+          "type": "string",
+          "description": "Document title"
+        },
+        "author": {
+          "type": "string",
+          "description": "Document author"
+        },
+        "entities": {
+          "type": "array",
+          "description": "Entities involved in the document",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "role"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Entity identifier"
+              },
+              "name": {
+                "type": "string",
+                "description": "Entity name"
+              },
+              "role": {
+                "type": "string",
+                "description": "Entity role in the document"
+              }
+            }
+          }
+        },
+        "jurisdiction": {
+          "type": "string",
+          "description": "Legal jurisdiction"
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "required": ["sections"],
+      "properties": {
+        "sections": {
+          "type": "array",
+          "description": "Document sections",
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "content"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Section identifier"
+              },
+              "title": {
+                "type": "string",
+                "description": "Section title"
+              },
+              "content": {
+                "type": "string",
+                "description": "Section content"
+              }
+            }
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "object",
+      "properties": {
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "target", "type"],
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["source", "target", "type"],
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

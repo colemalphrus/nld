@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/colemalphrus/nld/internal/schema"
 	"github.com/colemalphrus/nld/internal/validator"
 	"github.com/spf13/cobra"
 )
@@ -15,10 +18,10 @@ const (
 
 // CLI handles command-line interface operations for the NLD tool
 type CLI struct {
-	rootCmd     *cobra.Command
-	validator   *validator.Validator
-	verbose     bool
-	quiet       bool
+	rootCmd      *cobra.Command
+	validator    *validator.Validator
+	verbose      bool
+	quiet        bool
 	outputFormat string
 }
 
@@ -78,32 +81,41 @@ It provides functionality for creating, validating, and managing NLD documents.`
 
 // addValidateCommand adds the validate command
 func (c *CLI) addValidateCommand() {
+	var schemaPath string
+	
 	validateCmd := &cobra.Command{
 		Use:   "validate [file]",
 		Short: "Validate an NLD document",
 		Long:  "Validate an NLD document against its schema",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return c.runValidate(args[0])
+			return c.runValidate(args[0], schemaPath)
 		},
 	}
+	
+	// Add validate-specific flags
+	validateCmd.Flags().StringVarP(&schemaPath, "schema", "s", "", "Path to schema file (optional)")
 	
 	c.rootCmd.AddCommand(validateCmd)
 }
 
 // addInitCommand adds the init command
 func (c *CLI) addInitCommand() {
+	var docType string
+	var outputPath string
+	
 	initCmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new NLD document",
 		Long:  "Initialize a new NLD document with a specified template",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return c.runInit()
+			return c.runInit(docType, outputPath)
 		},
 	}
 	
 	// Add init-specific flags
-	initCmd.Flags().String("type", "default", "Type of document to initialize")
+	initCmd.Flags().StringVarP(&docType, "type", "t", "contract", "Type of document to initialize (contract, receipt, agreement)")
+	initCmd.Flags().StringVarP(&outputPath, "output", "o", "document.json", "Output file path")
 	
 	c.rootCmd.AddCommand(initCmd)
 }
@@ -123,9 +135,12 @@ func (c *CLI) addVersionCommand() {
 }
 
 // runValidate runs the validate command
-func (c *CLI) runValidate(filePath string) error {
+func (c *CLI) runValidate(filePath, schemaPath string) error {
 	if c.verbose {
 		fmt.Printf("Validating file: %s\n", filePath)
+		if schemaPath != "" {
+			fmt.Printf("Using schema: %s\n", schemaPath)
+		}
 	}
 	
 	// Check if file exists
@@ -133,15 +148,103 @@ func (c *CLI) runValidate(filePath string) error {
 		return fmt.Errorf("file not found: %s", filePath)
 	}
 	
-	// Placeholder for validation logic
-	fmt.Println("Validation successful (placeholder)")
+	var result *validator.ValidationResult
+	var err error
+	
+	if schemaPath != "" {
+		// Use the specified schema
+		result, err = c.validator.ValidateDocument(filePath, schemaPath)
+	} else {
+		// Determine the schema based on the document type
+		s, err := schema.GetDocumentSchema(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to determine schema: %w", err)
+		}
+		
+		// Read the document
+		docBytes, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read document: %w", err)
+		}
+		
+		// Validate using the determined schema
+		result, err = s.Validate(docBytes)
+	}
+	
+	if err != nil {
+		return fmt.Errorf("validation error: %w", err)
+	}
+	
+	// Output the result
+	if c.outputFormat == "json" {
+		// Output as JSON
+		jsonResult, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to format result as JSON: %w", err)
+		}
+		fmt.Println(string(jsonResult))
+	} else {
+		// Output as text
+		if result.Valid {
+			fmt.Println("Document is valid.")
+		} else {
+			fmt.Println(validator.FormatValidationResult(result))
+		}
+	}
+	
+	// Return an error if the document is invalid
+	if !result.Valid {
+		return fmt.Errorf("document validation failed")
+	}
+	
 	return nil
 }
 
 // runInit runs the init command
-func (c *CLI) runInit() error {
-	// Placeholder for init logic
-	fmt.Println("Initialized new NLD document (placeholder)")
+func (c *CLI) runInit(docType, outputPath string) error {
+	if c.verbose {
+		fmt.Printf("Initializing new %s document: %s\n", docType, outputPath)
+	}
+	
+	// Create a basic document template based on the type
+	doc := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"version": "1.0.0",
+			"type":    docType,
+			"created": "2025-06-27T00:00:00Z",
+			"title":   fmt.Sprintf("New %s", docType),
+		},
+		"content": map[string]interface{}{
+			"sections": []map[string]interface{}{
+				{
+					"id":      "section1",
+					"title":   "Section 1",
+					"content": "Enter your content here.",
+				},
+			},
+		},
+	}
+	
+	// Convert to JSON
+	jsonData, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to create document: %w", err)
+	}
+	
+	// Create directory if it doesn't exist
+	dir := filepath.Dir(outputPath)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+	}
+	
+	// Write to file
+	if err := os.WriteFile(outputPath, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write document: %w", err)
+	}
+	
+	fmt.Printf("Created new %s document: %s\n", docType, outputPath)
 	return nil
 }
 

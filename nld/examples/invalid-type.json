@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "type": "invoice",
+    "created": "2025-06-27T16:00:00Z",
+    "title": "Monthly Invoice"
+  },
+  "content": {
+    "sections": [
+      {
+        "id": "billing",
+        "title": "Billing Information",
+        "content": "Invoice for services rendered in June 2025"
+      }
+    ]
+  }
+}

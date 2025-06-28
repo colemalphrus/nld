@@ -1,0 +1,34 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "type": "receipt",
+    "created": "2025-06-27T14:30:00Z",
+    "title": "Purchase Receipt #12345",
+    "entities": [
+      {
+        "id": "seller",
+        "name": "Tech Store Inc.",
+        "role": "Seller"
+      },
+      {
+        "id": "buyer",
+        "name": "John Doe",
+        "role": "Buyer"
+      }
+    ]
+  },
+  "content": {
+    "sections": [
+      {
+        "id": "transaction",
+        "title": "Transaction Details",
+        "content": "Purchase of 1x Laptop Computer, Model XPS-15, Serial: ABC123456"
+      },
+      {
+        "id": "payment",
+        "title": "Payment Information",
+        "content": "Paid via Credit Card ending in 4321. Total amount: $1,299.99"
+      }
+    ]
+  }
+}

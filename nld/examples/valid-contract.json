@@ -1,0 +1,35 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "type": "contract",
+    "created": "2025-06-27T12:00:00Z",
+    "title": "Service Agreement",
+    "entities": [
+      {
+        "id": "party1",
+        "name": "Acme Corporation",
+        "role": "Service Provider"
+      },
+      {
+        "id": "party2",
+        "name": "XYZ Ltd",
+        "role": "Client"
+      }
+    ],
+    "jurisdiction": "California, USA"
+  },
+  "content": {
+    "sections": [
+      {
+        "id": "introduction",
+        "title": "Introduction",
+        "content": "This Service Agreement (\"Agreement\") is entered into by and between Acme Corporation and XYZ Ltd for the purpose of providing software development services."
+      },
+      {
+        "id": "scope",
+        "title": "Scope of Services",
+        "content": "Acme Corporation will provide software development services including design, implementation, testing, and deployment of the XYZ application."
+      }
+    ]
+  }
+}
