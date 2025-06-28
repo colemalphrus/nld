@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/colemalphrus/nld/internal/schema"
 	"github.com/colemalphrus/nld/internal/validator"
@@ -56,7 +57,7 @@ It provides functionality for creating, validating, and managing NLD documents.`
 	// Global flags
 	c.rootCmd.PersistentFlags().BoolVarP(&c.verbose, "verbose", "v", false, "Enable verbose output")
 	c.rootCmd.PersistentFlags().BoolVarP(&c.quiet, "quiet", "q", false, "Suppress all output except errors")
-	c.rootCmd.PersistentFlags().StringVarP(&c.outputFormat, "output-format", "o", "text", "Output format (text, json)")
+	c.rootCmd.PersistentFlags().StringVarP(&c.outputFormat, "output-format", "f", "text", "Output format (text, json)")
 	
 	// Version flag on root command
 	c.rootCmd.Flags().BoolP("version", "V", false, "Display version information")
@@ -82,19 +83,21 @@ It provides functionality for creating, validating, and managing NLD documents.`
 // addValidateCommand adds the validate command
 func (c *CLI) addValidateCommand() {
 	var schemaPath string
+	var force bool
 	
 	validateCmd := &cobra.Command{
-		Use:   "validate [file]",
+		Use:   "validate [file...]",
 		Short: "Validate an NLD document",
-		Long:  "Validate an NLD document against its schema",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Validate one or more NLD documents against their schema",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return c.runValidate(args[0], schemaPath)
+			return c.runValidateFiles(args, schemaPath, force)
 		},
 	}
 	
 	// Add validate-specific flags
 	validateCmd.Flags().StringVarP(&schemaPath, "schema", "s", "", "Path to schema file (optional)")
+	validateCmd.Flags().BoolVarP(&force, "force", "f", false, "Continue validation even if some files fail")
 	
 	c.rootCmd.AddCommand(validateCmd)
 }
@@ -103,19 +106,25 @@ func (c *CLI) addValidateCommand() {
 func (c *CLI) addInitCommand() {
 	var docType string
 	var outputPath string
+	var force bool
+	var interactive bool
+	var title string
 	
 	initCmd := &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new NLD document",
 		Long:  "Initialize a new NLD document with a specified template",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return c.runInit(docType, outputPath)
+			return c.runInit(docType, outputPath, force, interactive, title)
 		},
 	}
 	
 	// Add init-specific flags
 	initCmd.Flags().StringVarP(&docType, "type", "t", "contract", "Type of document to initialize (contract, receipt, agreement)")
 	initCmd.Flags().StringVarP(&outputPath, "output", "o", "document.json", "Output file path")
+	initCmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing file if it exists")
+	initCmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactive mode to prompt for metadata")
+	initCmd.Flags().StringVar(&title, "title", "", "Document title")
 	
 	c.rootCmd.AddCommand(initCmd)
 }
@@ -134,7 +143,39 @@ func (c *CLI) addVersionCommand() {
 	c.rootCmd.AddCommand(versionCmd)
 }
 
-// runValidate runs the validate command
+// runValidateFiles runs the validate command for multiple files
+func (c *CLI) runValidateFiles(filePaths []string, schemaPath string, force bool) error {
+	validCount := 0
+	invalidCount := 0
+	
+	for _, filePath := range filePaths {
+		err := c.runValidate(filePath, schemaPath)
+		if err != nil {
+			invalidCount++
+			if !force {
+				return err
+			}
+		} else {
+			validCount++
+		}
+	}
+	
+	// Summary output
+	if !c.quiet {
+		if len(filePaths) > 1 {
+			fmt.Printf("\nValidation summary: %d valid, %d invalid\n", validCount, invalidCount)
+		}
+	}
+	
+	// Return error if any files were invalid
+	if invalidCount > 0 {
+		return fmt.Errorf("%d file(s) failed validation", invalidCount)
+	}
+	
+	return nil
+}
+
+// runValidate runs the validate command for a single file
 func (c *CLI) runValidate(filePath, schemaPath string) error {
 	if c.verbose {
 		fmt.Printf("Validating file: %s\n", filePath)
@@ -145,6 +186,9 @@ func (c *CLI) runValidate(filePath, schemaPath string) error {
 	
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		if !c.quiet {
+			fmt.Printf("✗ %s: file not found\n", filePath)
+		}
 		return fmt.Errorf("file not found: %s", filePath)
 	}
 	
@@ -158,12 +202,18 @@ func (c *CLI) runValidate(filePath, schemaPath string) error {
 		// Determine the schema based on the document type
 		s, err := schema.GetDocumentSchema(filePath)
 		if err != nil {
+			if !c.quiet {
+				fmt.Printf("✗ %s: failed to determine schema: %v\n", filePath, err)
+			}
 			return fmt.Errorf("failed to determine schema: %w", err)
 		}
 		
 		// Read the document
 		docBytes, err := os.ReadFile(filePath)
 		if err != nil {
+			if !c.quiet {
+				fmt.Printf("✗ %s: failed to read document: %v\n", filePath, err)
+			}
 			return fmt.Errorf("failed to read document: %w", err)
 		}
 		
@@ -172,23 +222,38 @@ func (c *CLI) runValidate(filePath, schemaPath string) error {
 	}
 	
 	if err != nil {
+		if !c.quiet {
+			fmt.Printf("✗ %s: validation error: %v\n", filePath, err)
+		}
 		return fmt.Errorf("validation error: %w", err)
 	}
 	
 	// Output the result
-	if c.outputFormat == "json" {
-		// Output as JSON
-		jsonResult, err := json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to format result as JSON: %w", err)
-		}
-		fmt.Println(string(jsonResult))
-	} else {
-		// Output as text
-		if result.Valid {
-			fmt.Println("Document is valid.")
+	if !c.quiet {
+		if c.outputFormat == "json" {
+			// Output as JSON
+			jsonResult, err := json.MarshalIndent(result, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to format result as JSON: %w", err)
+			}
+			fmt.Println(string(jsonResult))
 		} else {
-			fmt.Println(validator.FormatValidationResult(result))
+			// Output as text with colors
+			if result.Valid {
+				fmt.Println(validator.ColoredOutput(true, fmt.Sprintf("✓ %s is valid", filePath)))
+			} else {
+				fmt.Println(validator.ColoredOutput(false, fmt.Sprintf("✗ %s has %d errors:", filePath, len(result.Errors))))
+				for _, err := range result.Errors {
+					lineInfo := ""
+					if err.Line > 0 {
+						lineInfo = fmt.Sprintf("Line %d: ", err.Line)
+					}
+					fmt.Printf("  - %s%s\n", lineInfo, err.Message)
+					if c.verbose && err.Field != "" {
+						fmt.Printf("    at %s\n", err.Field)
+					}
+				}
+			}
 		}
 	}
 	
@@ -201,27 +266,138 @@ func (c *CLI) runValidate(filePath, schemaPath string) error {
 }
 
 // runInit runs the init command
-func (c *CLI) runInit(docType, outputPath string) error {
+func (c *CLI) runInit(docType, outputPath string, force, interactive bool, title string) error {
 	if c.verbose {
 		fmt.Printf("Initializing new %s document: %s\n", docType, outputPath)
 	}
 	
-	// Create a basic document template based on the type
-	doc := map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"version": "1.0.0",
-			"type":    docType,
-			"created": "2025-06-27T00:00:00Z",
-			"title":   fmt.Sprintf("New %s", docType),
-		},
-		"content": map[string]interface{}{
-			"sections": []map[string]interface{}{
-				{
-					"id":      "section1",
-					"title":   "Section 1",
-					"content": "Enter your content here.",
-				},
+	// Check if file exists and force flag is not set
+	if _, err := os.Stat(outputPath); err == nil && !force {
+		return fmt.Errorf("file already exists: %s (use --force to overwrite)", outputPath)
+	}
+	
+	// Create metadata based on document type
+	metadata := map[string]interface{}{
+		"version": "1.0.0",
+		"type":    docType,
+		"created": time.Now().Format(time.RFC3339),
+	}
+	
+	// Set title from flag or default
+	if title != "" {
+		metadata["title"] = title
+	} else {
+		metadata["title"] = fmt.Sprintf("New %s", docType)
+	}
+	
+	// Interactive mode to prompt for additional metadata
+	if interactive {
+		if !c.quiet {
+			fmt.Println("Enter document metadata (press Enter to use default):")
+		}
+		
+		// Prompt for title if not provided via flag
+		if title == "" {
+			fmt.Printf("Title [%s]: ", metadata["title"])
+			var input string
+			fmt.Scanln(&input)
+			if input != "" {
+				metadata["title"] = input
+			}
+		}
+		
+		// Prompt for author
+		fmt.Print("Author: ")
+		var author string
+		fmt.Scanln(&author)
+		if author != "" {
+			metadata["author"] = author
+		}
+		
+		// Prompt for jurisdiction if it's a contract or agreement
+		if docType == "contract" || docType == "agreement" {
+			fmt.Print("Jurisdiction: ")
+			var jurisdiction string
+			fmt.Scanln(&jurisdiction)
+			if jurisdiction != "" {
+				metadata["jurisdiction"] = jurisdiction
+			}
+		}
+	}
+	
+	// Create document content based on type
+	var sections []map[string]interface{}
+	
+	switch docType {
+	case "contract":
+		sections = []map[string]interface{}{
+			{
+				"id":      "parties",
+				"title":   "Parties",
+				"content": "This agreement is between the following parties:",
 			},
+			{
+				"id":      "scope",
+				"title":   "Scope of Work",
+				"content": "The scope of work includes the following:",
+			},
+			{
+				"id":      "terms",
+				"title":   "Terms and Conditions",
+				"content": "The following terms and conditions apply:",
+			},
+		}
+	case "receipt":
+		sections = []map[string]interface{}{
+			{
+				"id":      "transaction",
+				"title":   "Transaction Details",
+				"content": "Transaction details go here.",
+			},
+			{
+				"id":      "items",
+				"title":   "Items",
+				"content": "List of items purchased.",
+			},
+			{
+				"id":      "payment",
+				"title":   "Payment Information",
+				"content": "Payment details go here.",
+			},
+		}
+	case "agreement":
+		sections = []map[string]interface{}{
+			{
+				"id":      "introduction",
+				"title":   "Introduction",
+				"content": "This agreement is made on the date specified above.",
+			},
+			{
+				"id":      "terms",
+				"title":   "Terms of Agreement",
+				"content": "The parties agree to the following terms:",
+			},
+			{
+				"id":      "signatures",
+				"title":   "Signatures",
+				"content": "The parties have executed this agreement as follows:",
+			},
+		}
+	default:
+		sections = []map[string]interface{}{
+			{
+				"id":      "section1",
+				"title":   "Section 1",
+				"content": "Enter your content here.",
+			},
+		}
+	}
+	
+	// Create the document structure
+	doc := map[string]interface{}{
+		"metadata": metadata,
+		"content": map[string]interface{}{
+			"sections": sections,
 		},
 	}
 	
@@ -244,7 +420,9 @@ func (c *CLI) runInit(docType, outputPath string) error {
 		return fmt.Errorf("failed to write document: %w", err)
 	}
 	
-	fmt.Printf("Created new %s document: %s\n", docType, outputPath)
+	if !c.quiet {
+		fmt.Println(validator.ColoredOutput(true, fmt.Sprintf("Created new %s document: %s", docType, outputPath)))
+	}
 	return nil
 }
 

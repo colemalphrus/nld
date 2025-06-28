@@ -16,23 +16,119 @@ NLD (Next-Gen Layout Document) is an open-source document standard and ecosystem
 3. **Create a web-based reader** that demonstrates the format's capabilities
 4. **Enable ecosystem adoption** through open standards and tooling
 
-## Key Components
-- **JSON Schema specification** with versioning and extension system
-- **Go validator CLI** (`nld validate`, `nld convert`, `nld init`)
-- **Go library package** for programmatic document manipulation
-- **Web reader application** demonstrating semantic document features
+## Installation
 
-## Getting Started
+### From Source
 ```bash
-# Install the NLD tool
-go install github.com/colemalphrus/nld/cmd/nld@latest
+# Clone the repository
+git clone https://github.com/colemalphrus/nld.git
+cd nld
 
-# Validate an NLD document
-nld validate path/to/document.nld
+# Build the tool
+go build ./cmd/nld
 
-# Convert a document to NLD format
-nld convert path/to/document.pdf
+# Install the tool
+go install ./cmd/nld
 ```
+
+### Using Go Install
+```bash
+# Install the NLD tool directly
+go install github.com/colemalphrus/nld/cmd/nld@latest
+```
+
+## Usage
+
+### Validating Documents
+Validate a single NLD document against its schema:
+```bash
+nld validate path/to/document.json
+```
+
+Validate multiple documents at once:
+```bash
+nld validate doc1.json doc2.json doc3.json
+```
+
+Use a specific schema file:
+```bash
+nld validate --schema path/to/schema.json document.json
+```
+
+Additional options:
+- `--verbose` or `-v`: Show detailed validation information
+- `--quiet` or `-q`: Suppress all output except errors
+- `--output-format` or `-o`: Output format (text, json)
+- `--force` or `-f`: Continue validation even if some files fail
+
+### Creating New Documents
+Create a new document using a template:
+```bash
+nld init --type contract --output my-contract.json
+```
+
+Available document types:
+- `contract`: Basic contract template
+- `receipt`: Receipt template
+- `agreement`: General agreement template
+
+Interactive mode for guided document creation:
+```bash
+nld init --interactive
+```
+
+Additional options:
+- `--title`: Set the document title
+- `--force` or `-f`: Overwrite existing files
+
+### Version Information
+Display version information:
+```bash
+nld version
+```
+
+## Document Schema
+NLD documents follow a structured JSON schema with the following main components:
+
+```json
+{
+  "metadata": {
+    "version": "1.0.0",
+    "type": "contract",
+    "created": "2025-06-27T12:00:00Z",
+    "title": "Service Agreement"
+  },
+  "content": {
+    "sections": [
+      {
+        "id": "introduction",
+        "title": "Introduction",
+        "content": "This is the introduction section."
+      }
+    ]
+  }
+}
+```
+
+### Required Fields
+- `metadata.version`: Document schema version (e.g., "1.0.0")
+- `metadata.type`: Document type (contract, receipt, agreement)
+- `metadata.created`: Creation date in ISO format
+- `metadata.title`: Document title
+- `content.sections`: Array of document sections
+
+### Optional Fields
+- `metadata.author`: Document author
+- `metadata.entities`: Entities involved in the document
+- `metadata.jurisdiction`: Legal jurisdiction
+- `relationships`: Document relationships and dependencies
+
+## Examples
+Example documents can be found in the `examples/` directory:
+- `valid-contract.json`: A complete contract example
+- `valid-receipt.json`: A receipt example
+- `invalid-missing-fields.json`: Example with missing required fields
+- `invalid-type.json`: Example with invalid document type
 
 ## License
 This project is licensed under [LICENSE] - see the LICENSE file for details.

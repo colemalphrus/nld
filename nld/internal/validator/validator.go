@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 )
 
@@ -286,11 +287,13 @@ func (v *Validator) GetSchemaForDocumentType(docType string) (string, error) {
 // FormatValidationResult formats a validation result as a human-readable string
 func FormatValidationResult(result *ValidationResult) string {
 	if result.Valid {
-		return "Document is valid."
+		green := color.New(color.FgGreen).SprintFunc()
+		return green("Document is valid.")
 	}
 	
 	var sb strings.Builder
-	sb.WriteString("Document validation failed:\n")
+	red := color.New(color.FgRed).SprintFunc()
+	sb.WriteString(red("Document validation failed:\n"))
 	
 	for i, err := range result.Errors {
 		sb.WriteString(fmt.Sprintf("%d. %s", i+1, err.Message))
@@ -308,4 +311,14 @@ func FormatValidationResult(result *ValidationResult) string {
 	}
 	
 	return sb.String()
+}
+
+// ColoredOutput returns colored output for validation results
+func ColoredOutput(valid bool, message string) string {
+	if valid {
+		green := color.New(color.FgGreen).SprintFunc()
+		return green(message)
+	}
+	red := color.New(color.FgRed).SprintFunc()
+	return red(message)
 }
