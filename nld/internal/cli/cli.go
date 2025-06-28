@@ -57,7 +57,7 @@ It provides functionality for creating, validating, and managing NLD documents.`
 	// Global flags
 	c.rootCmd.PersistentFlags().BoolVarP(&c.verbose, "verbose", "v", false, "Enable verbose output")
 	c.rootCmd.PersistentFlags().BoolVarP(&c.quiet, "quiet", "q", false, "Suppress all output except errors")
-	c.rootCmd.PersistentFlags().StringVarP(&c.outputFormat, "output-format", "f", "text", "Output format (text, json)")
+	c.rootCmd.PersistentFlags().StringVar(&c.outputFormat, "output-format", "text", "Output format (text, json)")
 	
 	// Version flag on root command
 	c.rootCmd.Flags().BoolP("version", "V", false, "Display version information")
@@ -97,7 +97,7 @@ func (c *CLI) addValidateCommand() {
 	
 	// Add validate-specific flags
 	validateCmd.Flags().StringVarP(&schemaPath, "schema", "s", "", "Path to schema file (optional)")
-	validateCmd.Flags().BoolVarP(&force, "force", "f", false, "Continue validation even if some files fail")
+	validateCmd.Flags().BoolVar(&force, "force", false, "Continue validation even if some files fail")
 	
 	c.rootCmd.AddCommand(validateCmd)
 }
@@ -122,7 +122,7 @@ func (c *CLI) addInitCommand() {
 	// Add init-specific flags
 	initCmd.Flags().StringVarP(&docType, "type", "t", "contract", "Type of document to initialize (contract, receipt, agreement)")
 	initCmd.Flags().StringVarP(&outputPath, "output", "o", "document.json", "Output file path")
-	initCmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing file if it exists")
+	initCmd.Flags().BoolVar(&force, "force", false, "Overwrite existing file if it exists")
 	initCmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactive mode to prompt for metadata")
 	initCmd.Flags().StringVar(&title, "title", "", "Document title")
 	
