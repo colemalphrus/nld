@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "type": "NDA",
+    "version": "1.0.0",
+    "created": "2025-06-27T12:00:00Z",
+    "entities": [
+      {
+        "id": "party1",
+        "name": "Acme Corporation",
+        "role": "Disclosing Party"
+      },
+      {
+        "id": "party2",
+        "name": "XYZ Ltd",
+        "role": "Receiving Party"
+      }
+    ],
+    "jurisdiction": "California, USA"
+  },
+  "structure": {
+    "sections": [
+      {
+        "id": "introduction",
+        "title": "Introduction",
+        "content": "This Non-Disclosure Agreement (\"Agreement\") is entered into by and between Acme Corporation and XYZ Ltd for the purpose of preventing the unauthorized disclosure of Confidential Information."
+      },
+      {
+        "id": "definitions",
+        "title": "Definitions",
+        "content": "For the purpose of this Agreement, \"Confidential Information\" shall include all information or material that has or could have commercial value or other utility in the business in which Disclosing Party is engaged."
+      }
+    ],
+    "items": [],
+    "definitions": [
+      {
+        "term": "Confidential Information",
+        "definition": "All information or material that has or could have commercial value or other utility in the business in which Disclosing Party is engaged."
+      }
+    ]
+  },
+  "relationships": {
+    "dependencies": [],
+    "references": [],
+    "conditions": []
+  },
+  "verification": {
+    "signatures": [],
+    "timestamps": [],
+    "attestations": []
+  }
+}
